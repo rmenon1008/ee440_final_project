@@ -1,0 +1,37 @@
+<head>
+    <script type="text/javascript" src="/eel.js"></script>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="step" id="setup-screen-one" style="display: block">
+        <h1>Step 1: Select a mirror ball image</h1>
+        <p>This can be any image with a reflective sphere fully in frame. Christmas ornaments are great for this! 🎄</p>
+        <input type="file" id="file-input" class="file-input" accept="image/*">
+        <label for="file-input" class="file-input-label">Browse for image</label>
+        <button class="next" disabled>Next</button>
+        <script>
+            document.getElementById("file-input").addEventListener("change", function() {
+                document.querySelector(".file-input-label").innerHTML = this.files[0].name;
+                document.querySelector(".next").disabled = false;
+            });
+        </script>
+        <p class="error">
+        </p>
+    </div>
+    <div class="step" id="setup-screen-two">
+        <h1>Step 2: Crop the image</h1>
+        <p>Move and resize the box only include the spherical mirror.</p>
+        <button class="next" style="margin-bottom: 20px">Next</button>
+        <div class="image-container">
+            <img src="" class="image" draggable="false">
+            <div class="crop-box">
+                <div class="handle"></div>
+            </div>
+        </div>
+    </div>
+    <div class="fullscreen" id="render-screen">
+        <p style="margin-left:20px;">Use WASD to navigate. <a href="" style="color: lightblue;">Try another image</a></p>
+        <img src="" class="image" draggable="false">
+    </div>
+    <script type="text/javascript" src="/script.js"></script>
+</body>
