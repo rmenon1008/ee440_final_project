@@ -11,6 +11,8 @@ FRAME_FOV = 120
 
 def denormalize_coords(image_coords, size):
     # [img_x, img_y, [sphere_u., sphere_v.]] -> [img_x, img_y, [sphere_x, sphere_y]]
+
+    # Use nearest neighbor to find the closest pixel to the specified (u, v) coordinates
     coords = np.zeros(image_coords.shape)
     coords[:, :, 0] = (image_coords[:, :, 0] + 1) / 2 * size[0]
     coords[:, :, 1] = (image_coords[:, :, 1] + 1) / 2 * size[1]
@@ -22,6 +24,8 @@ def denormalize_coords(image_coords, size):
 
 def image_coords_from_world_vec(world_vecs):
     # [img_x, img_y, [world_x, world_y, world_z]] -> [img_x, img_y, [sphere_u., sphere_v.]]
+
+    # Use the formula from [4] to convert the world vectors to mirror ball (u, v) coordinates
     frac = 1 / np.sqrt(2 * (world_vecs[:, :, 2] + 1))
     sphere_u = frac * world_vecs[:, :, 0]
     sphere_v = frac * world_vecs[:, :, 1]
@@ -77,6 +81,7 @@ def crop_image(image, crop):
     return image[crop[1]:crop[1]+crop[3], crop[0]:crop[0]+crop[2]]
 
 def draw_debug(azimuth, elevation):
+    # Used for quickly testing the renderer
     sphere_image = cv2.imread("images/mirror_ball_4.png")
     vecs = camera_rays_from_view(elevation, azimuth)
 
@@ -87,17 +92,28 @@ def draw_debug(azimuth, elevation):
     return sphere_image
 
 def draw_image(sphere_image, azimuth, elevation):
+    # Rendering steps
+
+    # Generate camera vecs
     vecs = camera_rays_from_view(elevation, azimuth)
+
+    # Get the mirror ball (u, v) coords
     normalized_coords = image_coords_from_world_vec(vecs)
+
+    # Get the real sphere coordinates
     sphere_coords = denormalize_coords(normalized_coords, sphere_image.shape)
+
+    # Draw the image
     image_out = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
     image_out[:, :, :] = sphere_image[sphere_coords[:, :, 1], sphere_coords[:, :, 0], :]
-
+    
     return image_out
 
 class MirrorBallRenderer:
     def __init__(self):
         self.image = None
+
+        # Start the camera at the center
         self.azimuth = 0
         self.elevation = 0
 
@@ -108,6 +124,7 @@ class MirrorBallRenderer:
         return draw_image(self.image, self.elevation, self.azimuth)
     
     def move_camera(self, key):
+        # Move in the direction of the key
         if key == 'a':
             self.azimuth += np.deg2rad(20)
         elif key == 'd':
@@ -122,17 +139,18 @@ class MirrorBallRenderer:
 if __name__ == "__main__":
     renderer = MirrorBallRenderer()
 
+    # Used to serialize and deserialize images
     def data_uri_to_cv2_img(uri):
         encoded_data = uri.split(',')[1]
         nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         return img
-    
     def cv2_img_to_data_uri(img):
         _, buffer = cv2.imencode('.png', img)
         png_as_text = base64.b64encode(buffer)
         return f"data:image/png;base64,{png_as_text.decode('utf-8')}"
 
+    # Expose functions to the web interface
     @eel.expose
     def set_image(base_64_img, crop=None):
         try:
@@ -144,15 +162,14 @@ if __name__ == "__main__":
             print(f"Error reading image: {e}")
             return f"Error reading image: {e}"
         return "OK"
-
     @eel.expose
     def render():
         image = renderer.render()
         return cv2_img_to_data_uri(image)
-    
     @eel.expose
     def move_camera(key):
         renderer.move_camera(key)
 
+    # Start the web interface
     eel.init('web')
     eel.start('index.html', size=(FRAME_WIDTH, FRAME_HEIGHT))
